@@ -41,6 +41,7 @@ numpy
 odfpy
 opencv-python-headless
 openpyxl
+opentelemetry-instrumentation-niquests
 ortools
 pandas
 pendulum

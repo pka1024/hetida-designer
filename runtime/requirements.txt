@@ -2228,6 +2228,7 @@ opentelemetry-api==1.44.0 \
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-httpx
+    #   opentelemetry-instrumentation-niquests
     #   opentelemetry-instrumentation-psycopg
     #   opentelemetry-instrumentation-requests
     #   opentelemetry-instrumentation-sqlalchemy
@@ -2251,6 +2252,7 @@ opentelemetry-instrumentation==0.65b0 \
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-httpx
+    #   opentelemetry-instrumentation-niquests
     #   opentelemetry-instrumentation-psycopg
     #   opentelemetry-instrumentation-requests
     #   opentelemetry-instrumentation-sqlalchemy
@@ -2271,6 +2273,10 @@ opentelemetry-instrumentation-httpx==0.65b0 \
     --hash=sha256:400f1b78afa4ee2332b5debe58e1ed1b317913d58812c952576be76660aeadb1 \
     --hash=sha256:4627aa9c6bb99bf4462c8b565b0ef6aeb9ffad95c6c92868be1ef7895de112ee
     # via logfire
+opentelemetry-instrumentation-niquests==0.1.0 \
+    --hash=sha256:17134e35d95a3dbb9ee1479ec3bac3f0443f77aa45e3f3ff27529ef1f69784a7 \
+    --hash=sha256:f40322fb88ac1d20cf03cee92567527f762341c74fb7971b4a29eb0cdc773330
+    # via -r ./requirements.in
 opentelemetry-instrumentation-psycopg==0.65b0 \
     --hash=sha256:62921ceaad2a0d0813a4185ce724aba40e583ead52db03bc3506de5ef53cab84 \
     --hash=sha256:a363c594a0dfcb1f6c8db5b1a1549a2e7dfde91f4d17e5fe0b48e777119705f9
@@ -2308,6 +2314,7 @@ opentelemetry-semantic-conventions==0.65b0 \
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-httpx
+    #   opentelemetry-instrumentation-niquests
     #   opentelemetry-instrumentation-requests
     #   opentelemetry-instrumentation-sqlalchemy
     #   opentelemetry-instrumentation-system-metrics
@@ -2319,6 +2326,7 @@ opentelemetry-util-http==0.65b0 \
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-httpx
+    #   opentelemetry-instrumentation-niquests
     #   opentelemetry-instrumentation-requests
 optree==0.20.0 \
     --hash=sha256:009e77bc761100903b45ace3124e073b4936594f5ada106578a4dcc73176a0e0 \

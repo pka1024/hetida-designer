@@ -1,7 +1,7 @@
 - fix frontend relative uri behaviour for monaco editor and auth to default to full uri path, not just domain.
 - upgrade dependencies
 - add Apache datafusion dependency
-
+- add niquest opentelemetry instrumentation. Niquest is used for fetching (timeseries) data from generic rest adapters.
 
 ## 0.14.4
 
