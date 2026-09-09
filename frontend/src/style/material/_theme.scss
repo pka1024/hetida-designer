@@ -68,12 +68,12 @@
   }
 
   .mdc-switch--selected {
-    --mdc-switch-selected-focus-track-color: #e3e3e3;
-    --mdc-switch-selected-hover-track-color: #e3e3e3;
-    --mdc-switch-selected-pressed-track-color: #e3e3e3;
-    --mdc-switch-selected-track-color: #e3e3e3;
-    --mdc-switch-handle-surface-color: #424242;
-    --mdc-switch-selected-hover-handle-color: #212121;
+    --mat-slide-toggle-selected-focus-track-color: #e3e3e3;
+    --mat-slide-toggle-selected-hover-track-color: #e3e3e3;
+    --mat-slide-toggle-selected-pressed-track-color: #e3e3e3;
+    --mat-slide-toggle-selected-track-color: #e3e3e3;
+    --mat-slide-toggle-handle-surface-color: #424242;
+    --mat-slide-toggle-selected-hover-handle-color: #212121;
   }
 
   .mat-icon-svg {
@@ -158,11 +158,11 @@
 
   .mdc-dialog__container {
     // Won't work with map-get or variables
-    --mdc-dialog-supporting-text-color: #292929;
-    --mdc-dialog-container-text-color: #292929;
+    --mat-dialog-supporting-text-color: #292929;
+    --mat-dialog-container-text-color: #292929;
 
     .mat-mdc-dialog-title {
-      --mdc-dialog-subhead-color: #292929;
+      --mat-dialog-subhead-color: #292929;
       background-color: colors.$hd-yellow;
     }
 
@@ -175,23 +175,23 @@
     }
 
     .mat-mdc-form-field {
-      --mdc-filled-text-field-input-text-color: #292929;
-      --mdc-filled-text-field-disabled-input-text-color: #29292961;
+      --mat-form-field-filled-input-text-color: #292929;
+      --mat-form-field-filled-disabled-input-text-color: #29292961;
 
       .mdc-line-ripple::before,
       .mdc-line-ripple::after {
-        --mdc-filled-text-field-active-indicator-color: #0000006b;
-        --mdc-filled-text-field-disabled-active-indicator-color: #0000000f;
-        --mdc-filled-text-field-hover-active-indicator-color: #292929;
-        --mdc-filled-text-field-focus-active-indicator-color: #292929;
+        --mat-form-field-filled-active-indicator-color: #0000006b;
+        --mat-form-field-filled-disabled-active-indicator-color: #0000000f;
+        --mat-form-field-filled-hover-active-indicator-color: #292929;
+        --mat-form-field-filled-focus-active-indicator-color: #292929;
       }
 
       .mat-mdc-text-field-wrapper
         .mat-mdc-form-field-flex
         .mat-mdc-floating-label {
-        --mdc-filled-text-field-label-text-color: #292929;
-        --mdc-filled-text-field-disabled-label-text-color: #292929;
-        --mdc-filled-text-field-hover-label-text-color: #292929;
+        --mat-form-field-filled-label-text-color: #292929;
+        --mat-form-field-filled-disabled-label-text-color: #292929;
+        --mat-form-field-filled-hover-label-text-color: #292929;
       }
     }
   }
@@ -199,7 +199,7 @@
   .dark-theme {
     & .mdc-dialog__container {
       // Won't work with map-get or variables
-      --mdc-dialog-supporting-text-color: #ffffff !important;
+      --mat-dialog-supporting-text-color: #ffffff !important;
 
       & .mat-mdc-dialog-title {
         color: colors.$hd-black !important;
@@ -295,27 +295,27 @@
 
   .navigation-container__search {
     // Won't work with map-get or variables
-    --mdc-outlined-text-field-outline-color: #e3e3e3;
-    --mdc-outlined-text-field-hover-outline-color: $hd-grey-dark;
+    --mat-form-field-outlined-outline-color: #e3e3e3;
+    --mat-form-field-outlined-hover-outline-color: $hd-grey-dark;
   }
 
   .dark-theme {
     & .navigation-container__search {
-      --mdc-outlined-text-field-hover-outline-color: $hd-white;
+      --mat-form-field-outlined-hover-outline-color: $hd-white;
     }
   }
 
   .mat-mdc-snack-bar-container {
     background-color: colors.$hd-pink;
-    --mdc-snackbar-container-color: $hd-pink;
+    --mat-snackbar-container-color: $hd-pink;
   }
 
   .dark-theme {
     & .mat-mdc-snack-bar-container {
       color: rgba(colors.$hd-white, 0.7) !important;
-      --mdc-snackbar-supporting-text-color: rgba($hd-white, 0.7) !important;
+      --mat-snackbar-supporting-text-color: rgba($hd-white, 0.7) !important;
       background-color: colors.$hd-pink;
-      --mdc-snackbar-container-color: $hd-pink;
+      --mat-snackbar-container-color: $hd-pink;
     }
   }
 
