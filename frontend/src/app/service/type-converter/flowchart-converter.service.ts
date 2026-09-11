@@ -32,7 +32,7 @@ export class FlowchartConverterService {
   public convertComponentToFlowchart(
     transformation: Transformation
   ): FlowchartConfiguration {
-    const position: Position = null;
+    const position: Position | null = null;
 
     const inputs: IO[] =
       typeof transformation.content !== 'string'
@@ -133,7 +133,7 @@ export class FlowchartConverterService {
         this.convertWorkflowOperatorsToFlowchartComponents(workflowClean),
       io: this.convertWorkflowIOToFlowchartIO(workflowClean),
       links: this.convertWorkflowLinksToFlowchartLinks(workflowClean)
-    } as FlowchartConfiguration;
+    };
 
     this.convertWorkflowConstants(workflowClean, flowchart);
 

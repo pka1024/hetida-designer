@@ -4,12 +4,12 @@ import { createEntityAdapter, EntityState } from '@ngrx/entity';
 export const tabItemEntityAdapter = createEntityAdapter<TabItem>();
 
 export interface ITabItemState extends EntityState<TabItem> {
-  ids: string[];
-  activeTabItemId: string | null;
+  idArray: string[];
+  activeTabItemId: string | number | null;
 }
 
 export const initialTabItemState: ITabItemState =
   tabItemEntityAdapter.getInitialState({
-    ids: [],
+    idArray: [],
     activeTabItemId: null
   });
