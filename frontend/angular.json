@@ -2,7 +2,10 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "cli": {
     "analytics": false,
-    "schematicCollections": ["@angular-eslint/schematics"]
+    "schematicCollections": ["@angular-eslint/schematics"],
+    "cache": {
+      "enabled": true
+    }
   },
   "version": 1,
   "newProjectRoot": "projects",
@@ -40,10 +43,10 @@
               "src/silent-renew.html"
             ],
             "styles": [
-              "src/libs/hetida-flowchart/hetida-flowchart.scss",
+              "src/style/styles.scss",
               "./node_modules/katex/dist/katex.css",
               "src/libs/hd-wiring/hd-wiring.scss",
-              "src/style/styles.scss"
+              "src/libs/hetida-flowchart/hetida-flowchart.scss"
             ],
             "scripts": ["node_modules/plotly.js/dist/plotly.min.js"],
             "aot": false,
@@ -110,12 +113,19 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "src/karma.conf.js",
             "styles": [
-              "src/libs/hetida-flowchart/hetida-flowchart.scss",
+              "src/style/styles.scss",
               "./node_modules/katex/dist/katex.css",
-              "src/style/styles.scss"
+              "src/libs/hd-wiring/hd-wiring.scss",
+              "src/libs/hetida-flowchart/hetida-flowchart.scss"
             ],
             "scripts": [],
-            "assets": ["src/favicon.ico", "src/assets"]
+            "assets": ["src/favicon.ico", "src/assets"],
+            "stylePreprocessorOptions": {
+              "includePaths": ["."],
+              "sass": {
+                "silenceDeprecations": ["import"]
+              }
+            }
           }
         },
         "lint": {
