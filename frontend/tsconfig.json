@@ -4,11 +4,11 @@
     "baseUrl": "./",
     "paths": {
       "@models/*": ["src/app/models/*"],
+      "hd-wiring": ["src/libs/hd-wiring/public-api.ts"],
+      "hd-wiring/*": ["src/libs/hd-wiring/*"],
       "hetida-flowchart": ["src/libs/hetida-flowchart/hetida-flowchart.ts"],
       "hetida-flowchart/*": ["src/libs/hetida-flowchart/*"],
-      "ng-hetida-flowchart": ["src/libs/ng-hetida-flowchart/public-api.ts"],
-      "hd-wiring": ["src/libs/hd-wiring/public-api.ts"],
-      "hd-wiring/*": ["src/libs/hd-wiring/*"]
+      "ng-hetida-flowchart": ["src/libs/ng-hetida-flowchart/public-api.ts"]
     },
     "esModuleInterop": true,
     "outDir": "./dist/out-tsc",

@@ -43,10 +43,10 @@
               "src/silent-renew.html"
             ],
             "styles": [
-              "src/style/styles.scss",
-              "./node_modules/katex/dist/katex.css",
               "src/libs/hd-wiring/hd-wiring.scss",
-              "src/libs/hetida-flowchart/hetida-flowchart.scss"
+              "src/libs/hetida-flowchart/hetida-flowchart.scss",
+              "src/style/styles.scss",
+              "./node_modules/katex/dist/katex.css"
             ],
             "scripts": ["node_modules/plotly.js/dist/plotly.min.js"],
             "aot": false,
@@ -113,12 +113,12 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "src/karma.conf.js",
             "styles": [
-              "src/style/styles.scss",
-              "./node_modules/katex/dist/katex.css",
               "src/libs/hd-wiring/hd-wiring.scss",
-              "src/libs/hetida-flowchart/hetida-flowchart.scss"
+              "src/libs/hetida-flowchart/hetida-flowchart.scss",
+              "src/style/styles.scss",
+              "./node_modules/katex/dist/katex.css"
             ],
-            "scripts": [],
+            "scripts": ["node_modules/plotly.js/dist/plotly.min.js"],
             "assets": ["src/favicon.ico", "src/assets"],
             "stylePreprocessorOptions": {
               "includePaths": ["."],
