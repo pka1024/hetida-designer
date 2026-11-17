@@ -73,6 +73,7 @@ export interface UiItemWiring {
   ioItemName: string;
   ioItemId: string;
   rawValue?: string | null | undefined;
+  uriValue?: string | null | undefined;
   nodeId?: string | null | undefined;
   nodeName: string | null;
   nodePath?: string | null;
@@ -241,7 +242,10 @@ export class WiringDialogComponent implements OnInit {
   private _loadWiring(standardWiring: TestWiring | undefined): void {
     // A form still being built from a previous wiring must not replace this one.
     this._loadWiringSubscription?.unsubscribe();
-    this._loadWiringSubscription = of(this.adapterList)
+    this._loadWiringSubscription = of([
+      AdapterHttpService.SPECIFY_URI_ADAPTER,
+      ...this.adapterList
+    ])
       .pipe(
         tap(availableAdapters => {
           this._availableAdapters = availableAdapters;
@@ -261,6 +265,8 @@ export class WiringDialogComponent implements OnInit {
               wiring =>
                 wiring.adapter_id !==
                   AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
+                wiring.adapter_id !==
+                  AdapterHttpService.SPECIFY_URI_ADAPTER_ID &&
                 wiring.adapter_id !== 'drop' &&
                 wiring.adapter_id !== 'plot'
             )
@@ -272,7 +278,6 @@ export class WiringDialogComponent implements OnInit {
                 adapterOfInputWiring,
                 `Adapter Id ${wiring.adapter_id} not found`
               );
-
               let getSourceSink$: Observable<SourceSinkNode | ThingNode | null>;
               const wiringRefId = wiring.ref_id;
               Utils.assert(
@@ -426,6 +431,7 @@ export class WiringDialogComponent implements OnInit {
     // Runs for every input or output ones.
     let nodeId: string | null = null;
     let manualValue: string | null = null;
+    const uriValue: string | null = null;
     let timestampFrom: Moment | null = null;
     let timestampTo: Moment | null = null;
     let timestampRangeQuery: string | null = null;
@@ -450,10 +456,11 @@ export class WiringDialogComponent implements OnInit {
       } else {
         this._saveAdapterIdOutput = adapterId;
       }
-
       if (
         inputOrOutputWiring.adapter_id !==
-        AdapterHttpService.MANUAL_INPUT_ADAPTER_ID
+          AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
+        inputOrOutputWiring.adapter_id !==
+          AdapterHttpService.SPECIFY_URI_ADAPTER_ID
       ) {
         // prettier-ignore
         nodeName = Utils.isDefined(nodeId)
@@ -560,6 +567,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
       ioItemName: ioItem.name,
       ioItemId: ioItem.id,
       rawValue: manualValue,
+      uriValue,
       nodeId,
       nodeName,
       nodePath,
@@ -586,6 +594,10 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
       ...wiringUi,
       rawValue: this.formBuilder.control({
         value: manualValue,
+        disabled: useDefaultValue
+      }),
+      uriValue: this.formBuilder.control({
+        value: uriValue,
         disabled: useDefaultValue
       }),
       adapterId: this.formBuilder.control({
@@ -1787,6 +1799,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
     }
     return (
       adapterId.value !== AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
+      adapterId.value !== AdapterHttpService.SPECIFY_URI_ADAPTER_ID &&
       adapterId.value !== 'drop' &&
       adapterId.value !== 'plot'
     );

@@ -107,6 +107,7 @@ export const adapterTypeIoTypeMap = {
 
 export interface Adapter {
   id: string;
+  internalUrl?: string;
   name: string;
   url: string;
 }
@@ -175,6 +176,14 @@ export class AdapterHttpService {
   static readonly MANUAL_INPUT_ADAPTER: Omit<Adapter, 'url'> = {
     id: AdapterHttpService.MANUAL_INPUT_ADAPTER_ID,
     name: 'manual input'
+  };
+
+  static readonly SPECIFY_URI_ADAPTER_ID: string = 'specify_uri';
+  static readonly SPECIFY_URI_ADAPTER: Adapter = {
+    id: AdapterHttpService.SPECIFY_URI_ADAPTER_ID,
+    internalUrl: '',
+    name: 'Specify URI',
+    url: ''
   };
 
   constructor(private readonly http: HttpClient) {}

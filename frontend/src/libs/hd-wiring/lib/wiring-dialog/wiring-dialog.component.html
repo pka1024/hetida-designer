@@ -81,7 +81,7 @@
               ><span class="mat-small">No adapter provided</span>
             </div>
           }
-          <div class="hd-d-flex hd-column-gab-1 hd-align-items-end">
+          <div class="hd-d-flex hd-column-gab-1">
             <h3 class="hd-text-strong hd-m-0 parameter-input__label-column">
               Label
             </h3>
@@ -145,82 +145,99 @@
                     ></mat-slide-toggle>
                   }
                 </div>
-                <div
-                  class="hd-d-flex hd-flex-direction-column parameter-input__adapter-column"
-                  style="align-self: flex-start"
+                <mat-form-field
+                  class="mat-form-field--no-fixed-width parameter-input__adapter-column"
                 >
-                  <mat-form-field class="mat-form-field--no-fixed-width">
-                    <mat-label>adapter list</mat-label>
-                    <mat-select
-                      formControlName="adapterId"
+                  <mat-label>adapter list</mat-label>
+                  <mat-select
+                    formControlName="adapterId"
+                    attr.data-testid="{{
+                      _getControlOrFail(inputControl, 'ioItemName').value +
+                        '-adapter-list-input-wiring-dialog' | lowercase
+                    }}"
+                  >
+                    @for (
+                      adapter of _adapterListForInputParameter();
+                      track adapter.id
+                    ) {
+                      <mat-option [value]="adapter.id">
+                        {{ adapter.name }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                @if (_parameterHasAdapter(inputControl)) {
+                  <mat-form-field
+                    class="mat-form-field--no-fixed-width parameter-input__value-column"
+                  >
+                    <mat-label>Browse Sources</mat-label>
+                    <input
+                      readonly
+                      [title]="_selectionTooltip(inputControl)"
+                      class="hd-clickable"
+                      (click)="
+                        $event.preventDefault();
+                        _openAdapterTreeDialog(
+                          'SOURCE',
+                          _getControlOrFail(inputControl, 'ioType').value,
+                          _getControlOrFail(inputControl, 'adapterId').value,
+                          'INPUT_WIRING'
+                        )
+                      "
+                      formControlName="displayName"
+                      matInput
+                      placeholder="Browse Sources"
+                      type="text"
                       attr.data-testid="{{
                         _getControlOrFail(inputControl, 'ioItemName').value +
-                          '-adapter-list-input-wiring-dialog' | lowercase
+                          '-browse-sources-input-wiring-dialog' | lowercase
                       }}"
+                    />
+                    <span
+                      matSuffix
+                      class="hd-clickable"
+                      (click)="
+                        _openAdapterTreeDialog(
+                          'SOURCE',
+                          _getControlOrFail(inputControl, 'ioType').value,
+                          _getControlOrFail(inputControl, 'adapterId').value,
+                          'INPUT_WIRING'
+                        )
+                      "
                     >
-                      @for (
-                        adapter of _adapterListForInputParameter();
-                        track adapter.id
-                      ) {
-                        <mat-option [value]="adapter.id">
-                          {{ adapter.name }}
-                        </mat-option>
-                      }
-                    </mat-select>
+                      <mat-icon>search</mat-icon>
+                    </span>
+                    @if (_selectionHint(inputControl); as selectionHint) {
+                      <mat-hint class="hd-text-ellipsis hd-w-100">{{
+                        selectionHint
+                      }}</mat-hint>
+                    }
+                    <mat-error>{{
+                      inputControl.get('displayName')?.errors?.message
+                    }}</mat-error>
                   </mat-form-field>
-                </div>
-                @if (_parameterHasAdapter(inputControl)) {
-                  <div
-                    class="hd-w-100 hd-d-flex hd-flex-direction-column parameter-input__value-column"
+                } @else if (
+                  _getControlOrFail(inputControl, 'adapterId').value ===
+                  'specify_uri'
+                ) {
+                  <mat-form-field
+                    class="mat-form-field--no-fixed-width parameter-input__value-column"
                   >
-                    <mat-form-field class="mat-form-field--no-fixed-width">
-                      <mat-label>Browse Sources</mat-label>
-                      <input
-                        readonly
-                        [title]="_selectionTooltip(inputControl)"
-                        class="hd-clickable"
-                        (click)="
-                          $event.preventDefault();
-                          _openAdapterTreeDialog(
-                            'SOURCE',
-                            _getControlOrFail(inputControl, 'ioType').value,
-                            _getControlOrFail(inputControl, 'adapterId').value,
-                            'INPUT_WIRING'
-                          )
-                        "
-                        formControlName="displayName"
-                        matInput
-                        placeholder="Browse Sources"
-                        type="text"
-                        attr.data-testid="{{
-                          _getControlOrFail(inputControl, 'ioItemName').value +
-                            '-browse-sources-input-wiring-dialog' | lowercase
-                        }}"
-                      />
-                      <span
-                        matSuffix
-                        class="hd-clickable"
-                        (click)="
-                          _openAdapterTreeDialog(
-                            'SOURCE',
-                            _getControlOrFail(inputControl, 'ioType').value,
-                            _getControlOrFail(inputControl, 'adapterId').value,
-                            'INPUT_WIRING'
-                          )
-                        "
-                      >
-                        <mat-icon>search</mat-icon>
-                      </span>
-                      @if (_selectionHint(inputControl); as selectionHint) {
-                        <mat-hint class="hd-text-ellipsis hd-w-100">{{
-                          selectionHint
-                        }}</mat-hint>
-                      }
-                      <mat-error>{{
-                        inputControl.get('displayName')?.errors?.message
-                      }}</mat-error>
-                    </mat-form-field>
-                  </div>
+                    <mat-label>URI Value</mat-label>
+                    <input
+                      formControlName="uriValue"
+                      matInput
+                      placeholder="URI Value"
+                      type="text"
+                      attr.data-testid="{{
+                        _getControlOrFail(inputControl, 'ioItemName').value +
+                          '-uri-value-wiring-dialog' | lowercase
+                      }}"
+                    />
+                    <mat-error>{{
+                      inputControl.get('uriValue')?.errors?.message
+                    }}</mat-error>
+                  </mat-form-field>
                 } @else {
                   <mat-form-field
                     class="mat-form-field--no-fixed-width parameter-input__value-column"
@@ -450,10 +467,7 @@
             >
               <span class="mat-h2">Output Parameter</span>
             </div>
-            <div
-              id="input-header"
-              class="hd-d-flex hd-column-gab-1 hd-align-items-end"
-            >
+            <div class="hd-d-flex hd-column-gab-1">
               <h3 class="hd-text-strong hd-m-0 parameter-output__label-column">
                 Label
               </h3>
@@ -505,79 +519,100 @@
                       }}</span
                     >
                   </div>
-                  <div
-                    class="d-flex hd-flex-direction-column parameter-output__adapter-column"
-                    style="align-self: flex-start"
-                  >
-                    <mat-form-field class="mat-form-field--no-fixed-width">
-                      <mat-label>adapter</mat-label>
-                      <mat-select
-                        placeholder="Only Output"
-                        formControlName="adapterId"
-                        attr.data-testid="{{
-                          _getControlOrFail(outputControl, 'ioItemName').value +
-                            '-adapter-output-wiring-dialog' | lowercase
-                        }}"
-                      >
-                        <mat-option [value]="null">Only Output</mat-option>
-
-                        @for (adapter of _availableAdapters; track adapter.id) {
-                          <mat-option [value]="adapter.id">
-                            {{ adapter.name }}
-                          </mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
                   <mat-form-field
-                    class="mat-form-field--no-fixed-width parameter-output__value-column"
+                    class="mat-form-field--no-fixed-width parameter-output__adapter-column"
                   >
-                    <mat-label>Browse Destinations</mat-label>
-                    <input
-                      [title]="_selectionTooltip(outputControl)"
-                      readonly
-                      formControlName="displayName"
-                      matInput
-                      class="hd-clickable"
-                      (click)="
-                        _openAdapterTreeDialog(
-                          'SINK',
-                          _getControlOrFail(outputControl, 'ioType').value,
-                          _getControlOrFail(outputControl, 'adapterId').value,
-                          'OUTPUT_WIRING'
-                        )
-                      "
-                      placeholder="Browse Destinations"
-                      type="text"
+                    <mat-label>adapter</mat-label>
+                    <mat-select
+                      placeholder="Only Output"
+                      formControlName="adapterId"
                       attr.data-testid="{{
                         _getControlOrFail(outputControl, 'ioItemName').value +
-                          '-browse-destinations-output-wiring-dialog'
-                          | lowercase
+                          '-adapter-output-wiring-dialog' | lowercase
                       }}"
-                    />
-                    <span
-                      matSuffix
-                      class="hd-clickable"
-                      (click)="
-                        _openAdapterTreeDialog(
-                          'SINK',
-                          _getControlOrFail(outputControl, 'ioType').value,
-                          _getControlOrFail(outputControl, 'adapterId').value,
-                          'OUTPUT_WIRING'
-                        )
-                      "
                     >
-                      <mat-icon>search</mat-icon>
-                    </span>
-                    @if (_selectionHint(outputControl); as selectionHint) {
-                      <mat-hint class="hd-text-ellipsis hd-w-100">{{
-                        selectionHint
-                      }}</mat-hint>
-                    }
-                    <mat-error>{{
-                      outputControl.get('nodeId')?.errors?.message
-                    }}</mat-error>
+                      <mat-option [value]="null">Only Output</mat-option>
+
+                      @for (adapter of _availableAdapters; track adapter.id) {
+                        <mat-option [value]="adapter.id">
+                          {{ adapter.name }}
+                        </mat-option>
+                      }
+                    </mat-select>
                   </mat-form-field>
+                  @if (
+                    _getControlOrFail(outputControl, 'adapterId').value ===
+                    'specify_uri'
+                  ) {
+                    <mat-form-field
+                      class="mat-form-field--no-fixed-width parameter-output__value-column"
+                    >
+                      <mat-label>URI Value</mat-label>
+                      <input
+                        formControlName="uriValue"
+                        matInput
+                        placeholder="URI Value"
+                        type="text"
+                        attr.data-testid="{{
+                          _getControlOrFail(outputControl, 'ioItemName').value +
+                            '-uri-value-wiring-dialog' | lowercase
+                        }}"
+                      />
+                      <mat-error>{{
+                        outputControl.get('uriValue')?.errors?.message
+                      }}</mat-error>
+                    </mat-form-field>
+                  } @else {
+                    <mat-form-field
+                      class="mat-form-field--no-fixed-width parameter-output__value-column"
+                    >
+                      <mat-label>Browse Destinations</mat-label>
+                      <input
+                        [title]="_selectionTooltip(outputControl)"
+                        readonly
+                        formControlName="displayName"
+                        matInput
+                        class="hd-clickable"
+                        (click)="
+                          _openAdapterTreeDialog(
+                            'SINK',
+                            _getControlOrFail(outputControl, 'ioType').value,
+                            _getControlOrFail(outputControl, 'adapterId').value,
+                            'OUTPUT_WIRING'
+                          )
+                        "
+                        placeholder="Browse Destinations"
+                        type="text"
+                        attr.data-testid="{{
+                          _getControlOrFail(outputControl, 'ioItemName').value +
+                            '-browse-destinations-output-wiring-dialog'
+                            | lowercase
+                        }}"
+                      />
+                      <span
+                        matSuffix
+                        class="hd-clickable"
+                        (click)="
+                          _openAdapterTreeDialog(
+                            'SINK',
+                            _getControlOrFail(outputControl, 'ioType').value,
+                            _getControlOrFail(outputControl, 'adapterId').value,
+                            'OUTPUT_WIRING'
+                          )
+                        "
+                      >
+                        <mat-icon>search</mat-icon>
+                      </span>
+                      @if (_selectionHint(outputControl); as selectionHint) {
+                        <mat-hint class="hd-text-ellipsis hd-w-100">{{
+                          selectionHint
+                        }}</mat-hint>
+                      }
+                      <mat-error>{{
+                        outputControl.get('nodeId')?.errors?.message
+                      }}</mat-error>
+                    </mat-form-field>
+                  }
                   <button
                     title="Clear Input"
                     class="parameter-output__delete-icon-column"
