@@ -1557,7 +1557,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
           filters[filterKey] = filterValue ?? '';
         }
 
-        // Special input wiring if an URI was defined.
+        // Use special input wiring, if an URI was defined.
         if (Utils.isDefined(uiWiring.uriValue)) {
           return {
             adapter_id: uiWiring.adapterId,
@@ -1603,7 +1603,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
           filters[filterKey] = filterValue ?? '';
         }
 
-        // Special output wiring, if an URI was defined
+        // Use special output wiring, if an URI was defined.
         if (Utils.isDefined(uiWiring.uriValue)) {
           return {
             adapter_id: uiWiring.adapterId,
