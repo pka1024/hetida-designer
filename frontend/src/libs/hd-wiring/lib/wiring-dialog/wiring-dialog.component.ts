@@ -36,9 +36,7 @@ import {
   OutputWiring,
   SourceSinkNode,
   TestWiring,
-  ThingNode,
-  UriInputWiring,
-  UriOutputWiring
+  ThingNode
 } from '../adapter-http.service';
 import { ConfigService } from '../config.service';
 import { JsonEditorComponent, JsonEditorModalData } from '../json-editor';
@@ -1490,140 +1488,140 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
       output_wirings: []
     };
 
-    const inputWirings: InputWiring[] | UriInputWiring[] =
-      this.inputFormArray.controls.map(
-        // eslint-disable-next-line complexity
-        (inputControl: AbstractControl) => {
-          Utils.assert(
-            inputControl instanceof FormGroup,
-            'Form schema is flawed, formGroup after formArray not found.'
-          );
-          const uiWiring: UiItemWiring = inputControl.getRawValue() ?? null;
-          let filters: InputFilters = {};
+    const inputWirings: InputWiring[] = this.inputFormArray.controls.map(
+      // eslint-disable-next-line complexity
+      (inputControl: AbstractControl) => {
+        Utils.assert(
+          inputControl instanceof FormGroup,
+          'Form schema is flawed, formGroup after formArray not found.'
+        );
+        const uiWiring: UiItemWiring = inputControl.getRawValue() ?? null;
+        let filters: InputFilters = {};
 
-          if (Utils.isDefined(uiWiring.rawValue)) {
-            filters.value = uiWiring.rawValue;
-          }
-          // Apply timestamp only for series and for non manual selection.
-          if (
-            (uiWiring.ioType === IOType.SERIES ||
-              uiWiring.ioType === IOType.MULTITSFRAME) &&
-            Utils.isNullOrUndefined(uiWiring.rawValue)
-          ) {
-            const timestampRange = uiWiring.timestampRange;
-            const timestampRangeQuery = uiWiring.timestampRangeQuery;
-            const timestampRangePickerHidden =
-              uiWiring.timestampRangePickerHidden;
+        if (Utils.isDefined(uiWiring.rawValue)) {
+          filters.value = uiWiring.rawValue;
+        }
+        // Apply timestamp only for series and for non manual selection.
+        if (
+          (uiWiring.ioType === IOType.SERIES ||
+            uiWiring.ioType === IOType.MULTITSFRAME) &&
+          Utils.isNullOrUndefined(uiWiring.rawValue)
+        ) {
+          const timestampRange = uiWiring.timestampRange;
+          const timestampRangeQuery = uiWiring.timestampRangeQuery;
+          const timestampRangePickerHidden =
+            uiWiring.timestampRangePickerHidden;
 
-            if (timestampRangePickerHidden) {
-              Utils.assert(
-                timestampRangeQuery,
-                'For series and non manual selection time range selection are required'
-              );
-              filters = {
-                timestampFrom:
-                  this._splitTimestampRangeQuery(timestampRangeQuery)[0] ??
-                  undefined,
-                timestampTo:
-                  this._splitTimestampRangeQuery(timestampRangeQuery)[1] ??
-                  undefined
-              };
-            } else {
-              Utils.assert(
-                timestampRange,
-                'For series and non manual selection time range selection are required'
-              );
-              filters = {
-                timestampFrom:
-                  this.dateFormatter.transform(
-                    timestampRange[0]?.valueOf(),
-                    // eslint-disable-next-line @stylistic/quotes
-                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
-                    '+0000'
-                  ) ?? undefined,
-                timestampTo:
-                  this.dateFormatter.transform(
-                    timestampRange[1]?.valueOf(),
-                    // eslint-disable-next-line @stylistic/quotes
-                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
-                    '+0000'
-                  ) ?? undefined
-              };
-            }
-          }
-
-          const textFilters = uiWiring.textFilters as Array<any>;
-
-          for (const textFilter of textFilters) {
-            const filterKey = textFilter.filterKey;
-            const filterValue = textFilter[`value_${filterKey}`];
-            filters[filterKey] = filterValue ?? '';
-          }
-
-          if (Utils.isDefined(uiWiring.uriValue)) {
-            return {
-              adapter_id: uiWiring.adapterId,
-              uri: uiWiring.uriValue,
-              workflow_input_name: uiWiring.ioItemName
+          if (timestampRangePickerHidden) {
+            Utils.assert(
+              timestampRangeQuery,
+              'For series and non manual selection time range selection are required'
+            );
+            filters = {
+              timestampFrom:
+                this._splitTimestampRangeQuery(timestampRangeQuery)[0] ??
+                undefined,
+              timestampTo:
+                this._splitTimestampRangeQuery(timestampRangeQuery)[1] ??
+                undefined
+            };
+          } else {
+            Utils.assert(
+              timestampRange,
+              'For series and non manual selection time range selection are required'
+            );
+            filters = {
+              timestampFrom:
+                this.dateFormatter.transform(
+                  timestampRange[0]?.valueOf(),
+                  // eslint-disable-next-line @stylistic/quotes
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
+                  '+0000'
+                ) ?? undefined,
+              timestampTo:
+                this.dateFormatter.transform(
+                  timestampRange[1]?.valueOf(),
+                  // eslint-disable-next-line @stylistic/quotes
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
+                  '+0000'
+                ) ?? undefined
             };
           }
+        }
 
+        const textFilters = uiWiring.textFilters as Array<any>;
+
+        for (const textFilter of textFilters) {
+          const filterKey = textFilter.filterKey;
+          const filterValue = textFilter[`value_${filterKey}`];
+          filters[filterKey] = filterValue ?? '';
+        }
+
+        // Special input wiring if an URI was defined.
+        if (Utils.isDefined(uiWiring.uriValue)) {
           return {
-            workflow_input_name: uiWiring.ioItemName,
             adapter_id: uiWiring.adapterId,
-            ref_id: uiWiring.nodeId ?? undefined,
-            ref_id_type: uiWiring.refIdType ?? undefined,
-            ref_key: uiWiring.metaDataKey ?? undefined,
-            type: uiWiring.nodeType ?? undefined,
-            filters: filters ?? undefined,
-            use_default_value: uiWiring.useDefaultValue ?? false
+            uri: uiWiring.uriValue,
+            workflow_input_name: uiWiring.ioItemName
           };
         }
-      );
 
-    const outputWirings: OutputWiring[] | UriOutputWiring[] =
-      this.outputFormArray.controls
-        .filter(control => {
-          Utils.assert(
-            control instanceof FormGroup,
-            'Form schema is flawed, formGroup after formArray not found'
-          );
-          const rawValue: UiItemWiring = control.getRawValue();
-          return Utils.isDefined(rawValue.adapterId);
-        })
-        .map(control => {
-          Utils.assert(
-            control instanceof FormGroup,
-            'Form schema is flawed, formGroup after formArray not found'
-          );
-          const uiWiring: UiItemWiring = control.getRawValue();
-          const textFilters = uiWiring.textFilters as Array<any>;
-          const filters: InputFilters = {};
+        return {
+          workflow_input_name: uiWiring.ioItemName,
+          adapter_id: uiWiring.adapterId,
+          ref_id: uiWiring.nodeId ?? undefined,
+          ref_id_type: uiWiring.refIdType ?? undefined,
+          ref_key: uiWiring.metaDataKey ?? undefined,
+          type: uiWiring.nodeType ?? undefined,
+          filters: filters ?? undefined,
+          use_default_value: uiWiring.useDefaultValue ?? false
+        };
+      }
+    );
 
-          for (const textFilter of textFilters) {
-            const filterKey = textFilter.filterKey;
-            const filterValue = textFilter[`value_${filterKey}`];
-            filters[filterKey] = filterValue ?? '';
-          }
+    const outputWirings: OutputWiring[] = this.outputFormArray.controls
+      .filter(control => {
+        Utils.assert(
+          control instanceof FormGroup,
+          'Form schema is flawed, formGroup after formArray not found'
+        );
+        const rawValue: UiItemWiring = control.getRawValue();
+        return Utils.isDefined(rawValue.adapterId);
+      })
+      .map(control => {
+        Utils.assert(
+          control instanceof FormGroup,
+          'Form schema is flawed, formGroup after formArray not found'
+        );
+        const uiWiring: UiItemWiring = control.getRawValue();
+        const textFilters = uiWiring.textFilters as Array<any>;
+        const filters: InputFilters = {};
 
-          if (Utils.isDefined(uiWiring.uriValue)) {
-            return {
-              adapter_id: uiWiring.adapterId,
-              uri: uiWiring.uriValue,
-              workflow_output_name: uiWiring.ioItemName
-            };
-          }
+        for (const textFilter of textFilters) {
+          const filterKey = textFilter.filterKey;
+          const filterValue = textFilter[`value_${filterKey}`];
+          filters[filterKey] = filterValue ?? '';
+        }
 
+        // Special output wiring, if an URI was defined
+        if (Utils.isDefined(uiWiring.uriValue)) {
           return {
-            workflow_output_name: uiWiring.ioItemName,
             adapter_id: uiWiring.adapterId,
-            ref_id: uiWiring.nodeId ?? undefined,
-            ref_id_type: uiWiring.refIdType ?? undefined,
-            ref_key: uiWiring.metaDataKey ?? undefined,
-            type: uiWiring.nodeType ?? undefined,
-            filters: filters ?? undefined
+            uri: uiWiring.uriValue,
+            workflow_output_name: uiWiring.ioItemName
           };
-        });
+        }
+
+        return {
+          workflow_output_name: uiWiring.ioItemName,
+          adapter_id: uiWiring.adapterId,
+          ref_id: uiWiring.nodeId ?? undefined,
+          ref_id_type: uiWiring.refIdType ?? undefined,
+          ref_key: uiWiring.metaDataKey ?? undefined,
+          type: uiWiring.nodeType ?? undefined,
+          filters: filters ?? undefined
+        };
+      });
 
     reassembledWorkflowWiring.input_wirings = inputWirings;
     reassembledWorkflowWiring.output_wirings = outputWirings;

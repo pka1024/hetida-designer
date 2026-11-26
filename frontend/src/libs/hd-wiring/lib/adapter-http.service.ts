@@ -43,21 +43,9 @@ export interface OutputWiring {
   filters?: InputFilters | null | undefined;
 }
 
-export interface UriInputWiring {
-  adapter_id: string;
-  uri: string;
-  workflow_input_name: string;
-}
-
-export interface UriOutputWiring {
-  adapter_id: string;
-  uri: string;
-  workflow_output_name: string;
-}
-
 export interface TestWiring {
-  input_wirings: InputWiring[] | UriInputWiring[];
-  output_wirings: OutputWiring[] | UriOutputWiring[];
+  input_wirings: InputWiring[];
+  output_wirings: OutputWiring[]
 }
 
 export type InputOrOutputWiring = InputWiring | OutputWiring;
