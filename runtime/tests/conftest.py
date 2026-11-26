@@ -94,6 +94,26 @@ def pytest_addoption(parser: Any) -> None:
     parser.addoption(
         "--ensure-performance", action="store_true", dest="ensure_performance", default=False
     )
+    parser.addoption(
+        "--execute-base-trafos", action="store_true", dest="execute_base_trafos", default=False
+    )
+    parser.addoption("--check-nestings", action="store_true", dest="check_nestings", default=False)
+    parser.addoption(
+        "--nesting-seeds",
+        type=int,
+        dest="nesting_seeds",
+        default=30,
+        help="number of random sequences of operations of the nesting checks",
+    )
+    parser.addoption(
+        "--nesting-steps",
+        type=int,
+        dest="nesting_steps",
+        default=40,
+        help="number of operations of each random sequence of the nesting checks",
+    )
+    # all tests which do not run by default, see pytest_collection_modifyitems
+    parser.addoption("--extended", action="store_true", dest="extended", default=False)
 
 
 @pytest.fixture(scope="session")
@@ -107,15 +127,20 @@ def apply_fixes(pytestconfig: pytest.Config) -> Any:
 
 
 def pytest_collection_modifyitems(config, items):
-    run_performance_ensuring_tests = config.getoption("ensure_performance")
+    skip_markers = {
+        marker: pytest.mark.skip(reason=f"need {option} or --extended to run")
+        for marker, option, dest in (
+            ("performance", "--ensure-performance", "ensure_performance"),
+            ("base_trafo_execution", "--execute-base-trafos", "execute_base_trafos"),
+            ("nestings", "--check-nestings", "check_nestings"),
+        )
+        if not (config.getoption(dest) or config.getoption("extended"))
+    }
 
-    if run_performance_ensuring_tests:
-        return
-
-    skip_marker = pytest.mark.skip(reason="need --ensure-performance to run")
     for item in items:
-        if "performance" in item.keywords:
-            item.add_marker(skip_marker)
+        for marker, skip_marker in skip_markers.items():
+            if marker in item.keywords:
+                item.add_marker(skip_marker)
 
 
 @pytest_asyncio.fixture

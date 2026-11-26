@@ -1,3 +1,46 @@
+# 0.14.12
+
+- **POSSIBLY BREAKING CHANGE:** upgrade to plotly 7 in the runtime and plotly.js 4 in the frontend. This may break existing components. Note that plotly 7 e.g. removes the Mapbox based plots, e.g. `px.scatter_mapbox` and `go.Scattermapbox` (use the MapLibre based `px.scatter_map` and `go.Scattermap` instead).
+- remove deprecated base component "Simple Scatter Map Plot" (1.0.0). Workflows using it should switch to revision 1.0.1.
+- fix/improvement: The plot adapter chooses the visualization of ANY outputs by their value. Besides Series, now also DataFrames (like for MULTITSFRAME outputs if they have its columns, otherwise like for DATAFRAME outputs), single values, plotly figures and plotly json objects are visualized instead of showing "Unplottable ANY object". See [Plot adapter](https://hetida.github.io/hetida-designer/integration_guide/adapter_system/builtin_adapters/plot_adapter/).
+
+# 0.14.11
+
+- fix: Bearer tokens "leeway" is now 30 seconds by default and can be configured. See [Further auth configuration](https://hetida.github.io/hetida-designer/deployment_operation/authentication/#further-auth-configuration).
+- reduce log level of some generic rest adapter log messages
+- fix: Output wirings switched from a metadata sink to "Drop Result" or "Plot" in the wiring dialog can be saved again.
+- improved ui notification messages
+- fix: URI wirings now interpret/apply the fragment (`#ref_key=...&ref_id_type=...`, `attrs`, `use_default_value`) correctly.
+- new base components "Formula Calculator" and German variant "Formelrechner" (0.1.0) in the "Basic Arithmetic" including time zone handling.
+- new base component "Kumulierte Tagessumme" (0.1.0) in the "Arithmetic" category, with German documentation
+- fix: Importing transformations, e.g. when deploying the base transformations, stores components imported by other components via `import_comp` before the components importing them. Before, a released component importing another component failed to import if it came first, depending on the order of the files.
+- Base components may import other base components via `import_comp`. Their tests in the component code then also run with pytest directly, e.g. by `./run check`: `runtime/conftest.py` provides the base components to `import_comp`.
+- The nix shell development setup deploys changed or added base components and workflows (in `runtime/transformations`) into the running backend, overwriting them also if they are released (overmind process `basetrafos`).
+
+## 0.14.10
+
+- fix: Timeseries (SERIES), MULTITSFRAMEs and SINGLETSFRAMEs loaded from a generic REST adapter can be sent to a generic REST adapter again without explicit timezone conversion necessary in component code.
+
+## 0.14.9
+
+- fix: Usage of deprecated pandas / statsmodels code in some base trafos
+- Improve nesting information handling for changes in DRAFT workflows
+- Reworked how the application detects whether an operator instantiates a deprecated transformation revision or a workflow containing one at any depth. As before, workflows already opened in the user interface show changed marks only after reloading the page.
+- Additional unit tests ensuring a consistent nesting management and behaviour, run with `--check-nestings` (about 7 s with `-n 8`).
+- fix: Workflows containing a workflow which contains two revisions (or copies) of a workflow in which an operator differs, e.g. after upgrading it in one of them, can be stored and executed again.
+- fix: Workflows containing a workflow which contains the same workflow more than once (e.g. A contains B, B contains C twice) can be stored again, e.g. when creating a new revision or importing them. Since 0.14.1 storing them failed with an integrity error (duplicate key value violates unique constraint "nestings_pkey").
+- feature: The generic REST adapters now accept ISO-8601 timestamps of differing precision in the same response, e.g. `2026-10-26T16:46:27Z` next to `2026-10-26T16:46:27.123Z`.
+- **POSSIBLY BREAKING CHANGE**: The generic REST adapters let pyarrow parse the timestamps of timeseries (SERIES), MULTITSFRAMEs and SINGLETSFRAMEs while reading the response, instead of parsing them with Pandas afterwards. This increases performance. While we try to maintain backwards compatibility it may lead to slightly different results concerning precision and behaviour around `null` / `NaT`.
+- fix: Errors parsing a response of the generic REST adapters which mention "empty", e.g. a column `isEmpty` changing its type, no longer let it be taken for an empty response, silently yielding no data.
+- fix: The dataframe sources "Masterdata" of the python demo adapter can be loaded again. Their column `value` mixed strings and numbers, which the JSON reader (pyarrow) of the generic REST adapters rejects since 0.14.3. Now all values are strings, e.g. `"17"` employees.
+- Added and fixed test and release wirings for most base components and workflows. New tests check the wirings of the base transformations, and with `--execute-base-trafos` they execute all base transformations with their test wiring (about 20 s).
+- feature: ANY inputs accept the wrapped format of SERIES and DATAFRAME (with `"__hd_wrapped_data_object__"`), e.g. via manual input or as default value, and then receive a Pandas Series or DataFrame instead of a dict. Previously, components with ANY inputs expecting Pandas objects, like "Average" or "Moving average time", could not be executed with manual input at all and needed wrapping in a workflow with "PAss Through" components of the appropriate type. A dict with this key which is not valid wrapped data lets the execution fail. See [ANY](https://hetida.github.io/hetida-designer/user_guide/data_types/any/#pandas-series-and-dataframes-via-any-inputsoutputs).
+- feature: Pandas Series and DataFrames objects returned via ANY outputs, e.g. by "Add" or "Moving average time" for a Series, are returned in the wrapped format of SERIES and DATAFRAME. Previously the execution failed with a serialization error.
+- fix: base components "Count level crossings" (1.0.1), "Merge timeseries deduplicating timestamps" (1.0.0) and "Linear Regression two Series" (1.0.0) failed since 0.14.0 with pandas 3 and numpy 2.5. Their outputs are unchanged. "Count level crossings" now also works for data with an integer index not starting at 0, for which it failed before.
+- The deprecated base components "Integrate" (1.0.0), "Count level crossings" (1.0.0), "Resample Datetime Index using Mean" (1.0.0) and "Resample Numeric Index using Mean" (1.0.0) are no longer delivered. Use their revisions 1.0.1 instead.
+- frontend dependency upgrades and security fixes
+- frontend wiring dialog now falls back to manual input for wirings with unregistered adapter 
+
 ## 0.14.8
 
 - runtime Python dependency upgrades

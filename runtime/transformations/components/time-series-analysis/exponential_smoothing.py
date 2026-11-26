@@ -247,6 +247,8 @@ def hyper_tuning_grid_search(
         )
 
     train = train.sort_index()
+    # statsmodels infers the frequency of the index as well, but warns if it has none
+    train = train.set_axis(pd.DatetimeIndex(train.index, freq="infer"))
 
     # Parameter tuning
     best_alpha, best_beta, best_gamma, best_phi, best_score = (
@@ -369,6 +371,8 @@ def train_exponential_smoothing(
         )
 
     train = train.sort_index()
+    # statsmodels infers the frequency of the index as well, but warns if it has none
+    train = train.set_axis(pd.DatetimeIndex(train.index, freq="infer"))
 
     # Model training
     model = ExponentialSmoothing(
@@ -826,6 +830,31 @@ TEST_WIRING_FROM_PY_FILE_IMPORT = {
         },
         {"workflow_input_name": "number_of_forecast_steps", "filters": {"value": "7"}},
         {"workflow_input_name": "seasonal_periods", "filters": {"value": "7"}},
+        {
+            "workflow_input_name": "test_size",
+            "use_default_value": True,
+            "filters": {"value": "0.0"},
+        },
+        {
+            "workflow_input_name": "hyperparameter_tuning_iterations",
+            "use_default_value": True,
+            "filters": {"value": "200"},
+        },
+        {
+            "workflow_input_name": "confidence_level",
+            "use_default_value": True,
+            "filters": {"value": "0.05"},
+        },
+        {
+            "workflow_input_name": "plot_in_sample_forecast",
+            "use_default_value": True,
+            "filters": {"value": "False"},
+        },
+        {
+            "workflow_input_name": "plot_marker",
+            "use_default_value": True,
+            "filters": {"value": "True"},
+        },
     ]
 }
 RELEASE_WIRING = {
@@ -838,5 +867,30 @@ RELEASE_WIRING = {
         },
         {"workflow_input_name": "number_of_forecast_steps", "filters": {"value": "7"}},
         {"workflow_input_name": "seasonal_periods", "filters": {"value": "7"}},
+        {
+            "workflow_input_name": "test_size",
+            "use_default_value": True,
+            "filters": {"value": "0.0"},
+        },
+        {
+            "workflow_input_name": "hyperparameter_tuning_iterations",
+            "use_default_value": True,
+            "filters": {"value": "200"},
+        },
+        {
+            "workflow_input_name": "confidence_level",
+            "use_default_value": True,
+            "filters": {"value": "0.05"},
+        },
+        {
+            "workflow_input_name": "plot_in_sample_forecast",
+            "use_default_value": True,
+            "filters": {"value": "False"},
+        },
+        {
+            "workflow_input_name": "plot_marker",
+            "use_default_value": True,
+            "filters": {"value": "True"},
+        },
     ]
 }

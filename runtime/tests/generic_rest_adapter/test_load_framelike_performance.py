@@ -34,6 +34,15 @@ a big pytest parent would otherwise swamp the measurement), and (b) the import p
 production helper pulls in the hetdesrun stack) would otherwise mask the parse. The subprocess also
 pins pyarrow to one thread (see ``__main__``) so the peak is deterministic. Linux-only; the memory
 test skips elsewhere. Locally ~0.1; asserted < 0.75.
+
+Timestamps: pyarrow parses the timestamps of timeseries, multitsframes and singletsframes while
+reading them, instead of handing them over as strings to ``pd.to_datetime`` with
+``format="ISO8601"`` as before. A further test guards that this stays faster than the previous
+chain: it times the production parse against reading the same bytes without schema and parsing the
+timestamp column with pandas. A single parse takes only ~5-50 ms, so CPU contention would hit
+whole blocks of repetitions unequally: the two alternate in each repetition, and the minimum over
+more of them is taken. Locally ~0.4 (threaded) to ~0.7 (single core, also on 1-2 cores shared with
+busy processes at most ~0.8); asserted < 0.9.
 """
 
 import gc
@@ -46,6 +55,7 @@ from collections.abc import Callable
 
 import pandas as pd
 import pyarrow as pa
+import pyarrow.json as pa_json
 import pytest
 
 from hetdesrun.adapters.generic_rest.load_framelike import parse_framelike_response_stream
@@ -58,6 +68,9 @@ _MEM_MEASURE_RUNS = 3
 # The new chain must take / allocate less than this fraction of the old chain.
 _MAX_TIME_RATIO = 0.75
 _MAX_MEM_RATIO = 0.75
+# Parsing timestamps while reading must take less than this fraction of parsing them with pandas.
+_MAX_TIMESTAMP_TIME_RATIO = 0.9
+_TIMESTAMP_REPETITIONS = 21
 
 
 def _make_timeseries_ndjson(num_rows: int) -> bytes:
@@ -78,6 +91,15 @@ def _parse_old(raw: bytes) -> pd.DataFrame:
 def _parse_new(raw: bytes) -> pd.DataFrame:
     """The production parse core, as load_framelike_data invokes it (timeseries endpoint)."""
     return parse_framelike_response_stream(io.BytesIO(raw), "timeseries")
+
+
+def _parse_timestamps_with_pandas(raw: bytes) -> pd.DataFrame:
+    """Reference baseline (removed from production): timestamps handed over as strings."""
+    df = pa_json.read_json(
+        io.BytesIO(raw), read_options=pa_json.ReadOptions(block_size=1024 * 1024)
+    ).to_pandas(self_destruct=True, split_blocks=True, use_threads=True)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format="ISO8601", utc=True)
+    return df
 
 
 def _best_time(parse: Callable[[bytes], pd.DataFrame], raw: bytes) -> float:
@@ -175,6 +197,33 @@ def test_new_framelike_parse_chain_is_faster_than_old() -> None:
         "New framelike parse chain is not sufficiently faster than the old pd.read_json baseline: "
         f"new={new_best * 1000:.1f}ms old={old_best * 1000:.1f}ms "
         f"ratio={ratio:.3f} (must be < {_MAX_TIME_RATIO})"
+    )
+
+
+@pytest.mark.performance
+def test_timestamp_parsing_while_reading_is_faster_than_with_pandas() -> None:
+    raw = _make_timeseries_ndjson(_NUM_ROWS)
+
+    # Both must produce the same timestamps (this also warms up).
+    expected = _parse_timestamps_with_pandas(raw)["timestamp"]
+    assert expected.nunique() == _NUM_ROWS  # unique timestamps: no cache effects
+    assert _parse_new(raw)["timestamp"].equals(expected)
+
+    pandas_best = new_best = float("inf")
+    for _ in range(_TIMESTAMP_REPETITIONS):  # alternating, see module docstring
+        start = time.perf_counter()
+        _parse_timestamps_with_pandas(raw)
+        pandas_best = min(pandas_best, time.perf_counter() - start)
+        start = time.perf_counter()
+        _parse_new(raw)
+        new_best = min(new_best, time.perf_counter() - start)
+
+    assert pandas_best > 0.0  # guard against a degenerate (unmeasurably small) baseline
+    ratio = new_best / pandas_best
+    assert new_best < _MAX_TIMESTAMP_TIME_RATIO * pandas_best, (
+        "Parsing the timestamps while reading is not sufficiently faster than with pandas: "
+        f"new={new_best * 1000:.1f}ms pandas={pandas_best * 1000:.1f}ms "
+        f"ratio={ratio:.3f} (must be < {_MAX_TIMESTAMP_TIME_RATIO})"
     )
 
 

@@ -38,6 +38,21 @@ logger = logging.getLogger(__name__)
 # single JSON record (one row); 1 MiB is ample for the adapter's per-row records.
 _PYARROW_JSON_READ_BLOCK_SIZE = 1024 * 1024
 
+# The ISO-8601 timestamps of timeseries, multitsframes and singletsframes are parsed by pyarrow's
+# JSON reader itself, block by block in parallel, also if their precision differs within a response,
+# e.g. "2026-10-26T16:46:27Z" next to "2026-10-26T16:46:27.123Z" as Java's ISO_INSTANT (the Jackson
+# default for Instant) writes them. Timestamps without offset are taken as UTC. Fields of an
+# explicit schema come first in the table, the others follow in the order they occur. Parsing as
+# microseconds would reject timestamps with 9 fractional digits, even if they are zeros.
+_TIMESERIES_PARSE_OPTIONS = pa_json.ParseOptions(
+    explicit_schema=pa.schema([("timestamp", pa.timestamp("ns", tz="UTC"))]),
+    unexpected_field_behavior="infer",
+)
+# The unit pandas uses for timestamps parsed by itself (e.g. of manual input) or created with
+# date_range, unless that loses sub-microsecond precision. Components may rely on it, e.g. "To Long
+# Format" requires it for its timestamp column.
+_TIMESTAMP_TYPE = pa.timestamp("us", tz="UTC")
+
 # gzip data starts with these bytes, which JSON text never starts with
 GZIP_MAGIC_BYTES = b"\x1f\x8b"
 
@@ -122,6 +137,26 @@ def are_valid_sources(filtered_sources: list[FilteredSource]) -> tuple[bool, str
     return True, ""
 
 
+def parse_dataframe_timestamps(timestamps: pd.Series) -> pd.Series:
+    """Parse the timestamp column of a dataframe
+
+    format="ISO8601" accepts ISO-8601 timestamps of differing precision, e.g. "2026-10-26T16:46:27Z"
+    next to "2026-10-26T16:46:27.123Z", which are not converted to UTC. Without a format pandas
+    infers one from the first timestamp and requires all others to match it exactly. Since
+    dataframes may have timestamps in other formats, these and non-string columns (e.g. integers as
+    epoch nanoseconds, which pandas deprecates parsing with a format) are parsed with the format
+    pandas infers from the first timestamp.
+
+    Raises ValueError or TypeError if the timestamps cannot be parsed.
+    """
+    if pd.api.types.is_string_dtype(timestamps):
+        try:
+            return pd.to_datetime(timestamps, format="ISO8601")
+        except ValueError:
+            pass
+    return pd.to_datetime(timestamps)
+
+
 def parse_framelike_response_stream(
     stream: BinaryIO,
     endpoint: Literal["timeseries", "dataframe", "multitsframe", "singletsframe"],
@@ -130,23 +165,33 @@ def parse_framelike_response_stream(
     """Core transformation from a framelike response body to a DataFrame.
 
     Streams ``stream`` - a readable, already-decompressed binary file-like of newline-delimited JSON
-    records - through pyarrow's JSON reader and converts it to a numpy-backed pandas DataFrame, then
-    normalizes the ``timestamp`` column the way each endpoint needs. pyarrow reads the stream in
-    blocks and builds the columnar result incrementally, so memory grows with the resulting
-    DataFrame instead of the whole raw payload being buffered first (as ``pd.read_json`` does).
+    records - through pyarrow's JSON reader and converts it to a numpy-backed pandas DataFrame.
+    pyarrow reads the stream in blocks and builds the columnar result incrementally, so memory grows
+    with the resulting DataFrame instead of the whole raw payload being buffered first (as
+    ``pd.read_json`` does).
+
+    For timeseries, multitsframes and singletsframes pyarrow parses the ``timestamp`` entries while
+    reading into the first column, of dtype ``datetime64[us, UTC]`` or ``datetime64[ns, UTC]`` if
+    they have sub-microsecond precision (see _TIMESERIES_PARSE_OPTIONS and _TIMESTAMP_TYPE).
+    Records without timestamp or with one pyarrow cannot parse, e.g. outside of the nanosecond range
+    (years 1677 to 2262), raise an AdapterHandlingException. For dataframes the ``timestamp``
+    column becomes the index if it can be parsed, see :func:`parse_dataframe_timestamps`.
 
     An empty body yields an empty (0-column) DataFrame. ``error_source`` (e.g. the request URL) is
     only used in error / log messages.
 
     Shared by :func:`load_framelike_data` and its performance tests so both exercise the same code.
     """
+    is_dataframe = endpoint == "dataframe"
     try:
         table = pa_json.read_json(
             stream,
             read_options=pa_json.ReadOptions(block_size=_PYARROW_JSON_READ_BLOCK_SIZE),
+            parse_options=None if is_dataframe else _TIMESERIES_PARSE_OPTIONS,
         )
     except pa.ArrowInvalid as e:
-        if "empty" in str(e).lower():
+        # not just "empty" anywhere in the message, which may contain unparsable timestamps
+        if str(e).startswith("Empty JSON file"):
             return df_empty({})
         msg = (
             f"Could not parse framelike response data from {error_source} via the pyarrow json"
@@ -155,31 +200,51 @@ def parse_framelike_response_stream(
         logger.info(msg)
         raise AdapterHandlingException(msg) from e
 
+    if not is_dataframe:
+        if table.num_rows == 0:  # e.g. only a newline, which yields the timestamp column only
+            return df_empty({})
+        # The explicit schema always yields the timestamp column, with nulls for missing timestamps
+        timestamps = table.column("timestamp")
+        if (missing := timestamps.null_count) > 0:
+            msg = (
+                f"Framelike response data from {error_source} has {missing} of {table.num_rows}"
+                " records without timestamp (missing or null)."
+            )
+            logger.info(msg)
+            raise AdapterHandlingException(msg)
+        try:  # the safe cast fails if it would lose sub-microsecond precision
+            timestamps = timestamps.cast(_TIMESTAMP_TYPE)
+        except pa.ArrowInvalid:
+            logger.debug("Timestamps from %s have sub-microsecond precision", error_source)
+        else:
+            table = table.set_column(
+                table.schema.get_field_index("timestamp"), "timestamp", timestamps
+            )
+
     # to_pandas with self_destruct + split_blocks frees each Arrow column as its numpy column is
     # materialized (numeric columns are zero-copy), avoiding a full Arrow+numpy duplicate. Strings
     # stay as pandas' (arrow-backed) string dtype.
     df = table.to_pandas(self_destruct=True, split_blocks=True, use_threads=True)
 
-    if "timestamp" in df.columns:
-        if endpoint == "dataframe":
-            try:
-                parsed_timestamps = pd.to_datetime(df["timestamp"])
-            except (ValueError, TypeError) as e:
-                logger.info(
-                    "Column 'timestamp' of dataframe from %s could not be parsed and therefore"
-                    " not be set to index. Proceeding with default index. Error was: %s",
-                    error_source,
-                    str(e),
-                )
-            else:
-                df.index = parsed_timestamps
-                df = df.sort_index()
+    if not is_dataframe:
+        # pyarrow converts the timezone "UTC" to zoneinfo.ZoneInfo("UTC"), but pandas uses
+        # datetime.timezone.utc for "UTC" (e.g. utc=True), as did the generic REST adapters before
+        # pyarrow parsed the timestamps. Code may compare with it. The conversion copies no data.
+        df["timestamp"] = df["timestamp"].dt.tz_convert(datetime.timezone.utc)
+
+    if is_dataframe and "timestamp" in df.columns:
+        try:
+            parsed_timestamps = parse_dataframe_timestamps(df["timestamp"])
+        except (ValueError, TypeError) as e:
+            logger.info(
+                "Column 'timestamp' of dataframe from %s could not be parsed and therefore"
+                " not be set to index. Proceeding with default index. Error was: %s",
+                error_source,
+                str(e),
+            )
         else:
-            # timeseries / multitsframe / singletsframe: reproduce the tz-aware datetime
-            # "timestamp" column that
-            # pd.read_json used to infer automatically (pyarrow leaves ISO timestamps as strings,
-            # and downstream code relies on this column being datetime, e.g. as a series index).
-            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+            df.index = parsed_timestamps
+            df = df.sort_index()
 
     return df
 
@@ -235,11 +300,6 @@ async def load_framelike_data(  # noqa: PLR0915,PLR0912
     session = get_generic_rest_adapter_sync_session(adapter_key)
     try:
         start_time = datetime.datetime.now(datetime.timezone.utc)
-        logger.info(
-            "Start receiving generic rest adapter %s framelike data at %s",
-            adapter_key,
-            start_time.isoformat(),
-        )
         query_params: list[tuple[str, Any]] = [
             ("id", (str(filtered_source.ref_id))) for filtered_source in filtered_sources
         ] + additional_params
@@ -277,27 +337,23 @@ async def load_framelike_data(  # noqa: PLR0915,PLR0912
             )
             logger.info(msg)
             raise AdapterConnectionError(msg)
-        logger.info("Start reading in and parsing framelike data")
+        logger.debug("Start reading in and parsing framelike data")
 
         # Stream the response body straight into the parse core (parse_framelike_response_stream).
         raw = resp.raw
         assert raw is not None  # streamed 200 response always has a raw body  # noqa: S101
         raw.decode_content = True  # transparently decompress gzip/deflate while streaming
         df = parse_framelike_response_stream(raw, endpoint, error_source=url)
-        end_time = datetime.datetime.now(datetime.timezone.utc)
         logger.info(
             (
-                "Finished receiving generic rest framelike data (including dataframe parsing)"
-                " at %s. DataFrame shape is %s with columns %s"
+                "Received framelike data from generic rest adapter %s in %s"
+                " (including dataframe parsing). DataFrame shape is %s"
             ),
-            end_time.isoformat(),
+            adapter_key,
+            str(datetime.datetime.now(datetime.timezone.utc) - start_time),
             str(df.shape),
-            str(df.columns),
         )
-        logger.info(
-            ("Receiving generic rest adapter framelike data took (including dataframe parsing) %s"),
-            str(end_time - start_time),
-        )
+        logger.debug("Received DataFrame has columns %s", str(df.columns))
 
         if "Data-Attributes" in resp.headers:
             logger.debug("Got Data-Attributes via GET response header")
@@ -324,7 +380,6 @@ async def load_framelike_data(  # noqa: PLR0915,PLR0912
 
         logger.info(msg)
         raise AdapterConnectionError(msg) from e
-    logger.info("Complete generic rest adapter %s framelike request", adapter_key)
     if len(df) == 0:
         if endpoint == "timeseries":
             return create_empty_ts_df(ExternalType(common_data_type), attrs=df.attrs)

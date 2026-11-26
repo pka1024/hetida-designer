@@ -8,12 +8,14 @@ import base64
 import datetime
 import json
 import logging
+import zoneinfo
 from collections.abc import Mapping
 from posixpath import join as posix_urljoin
 from typing import Any, Literal
 from uuid import UUID
 
 import httpx
+import pytz
 from hdhelpers.metadata.attached import attrs_to_json
 from httpx import AsyncClient
 
@@ -25,6 +27,11 @@ from hetdesrun.webservice.auth_outgoing import ServiceAuthenticationError
 from hetdesrun.webservice.config import get_config
 
 logger = logging.getLogger(__name__)
+
+# The timezone objects for UTC which timestamps sent to the generic REST adapters may have: pandas
+# uses datetime.timezone.utc for "UTC" (e.g. utc=True), pyarrow zoneinfo's (e.g. in read_parquet)
+# and component code may use pytz's.
+UTC_TIMEZONES = (datetime.timezone.utc, zoneinfo.ZoneInfo("UTC"), pytz.UTC)
 
 
 def encode_attributes(df_attrs: Any) -> str:
@@ -73,12 +80,7 @@ async def post_framelike_records(
     url = posix_urljoin(await get_generic_rest_adapter_base_url(adapter_key), endpoint)
 
     start_time = datetime.datetime.now(datetime.timezone.utc)
-    logger.info(
-        "Start sending framelike data at %s to %s for id %s",
-        start_time.isoformat(),
-        url,
-        ref_id,
-    )
+    logger.debug("Start sending framelike data to %s for id %s", url, ref_id)
 
     try:
         response = await client.post(
@@ -103,8 +105,9 @@ async def post_framelike_records(
         )
         raise AdapterConnectionError(msg)
     logger.info(
-        "Successfully finished posting framelike data to %s for id %s at %s",
+        "Posted %s framelike records to %s for id %s in %s",
+        len(list_of_records),
         url,
         ref_id,
-        datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        str(datetime.datetime.now(datetime.timezone.utc) - start_time),
     )

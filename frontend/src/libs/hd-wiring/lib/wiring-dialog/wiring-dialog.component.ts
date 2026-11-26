@@ -59,6 +59,7 @@ import {
 } from '../tree-node-modal';
 import { OptionalMembers, Utils } from '../utils/utils';
 import { WarningDialogComponent } from '../warning-dialog/warning-dialog.component';
+import { NotificationService } from 'src/app/service/notifications/notification.service';
 
 export interface ExecutionDialogData {
   title: string;
@@ -204,7 +205,8 @@ export class WiringDialogComponent implements OnInit {
     private readonly formBuilder: FormBuilder,
     private readonly dialog: MatDialog,
     private readonly changeDetector: ChangeDetectorRef,
-    private readonly dateFormatter: DatePipe
+    private readonly dateFormatter: DatePipe,
+    private readonly notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -220,6 +222,10 @@ export class WiringDialogComponent implements OnInit {
     );
 
     this._loadWiring(this.wiringItem.test_wiring);
+  }
+
+  public getTypeColor(type: string): string {
+    return `var(--${type}-color)`;
   }
 
   public _hasReleaseWiring(): boolean {
@@ -271,6 +277,26 @@ export class WiringDialogComponent implements OnInit {
                 wiring.adapter_id !== 'drop' &&
                 wiring.adapter_id !== 'plot'
             )
+            .filter(wiring => {
+              // If the saved adapter from a wiring was not found on loading,
+              // it falls back to 'manual input' as a selected adapter and reset the wiring.
+              const adapterFound = availableAdapters.find(
+                availableAdapter => availableAdapter.id === wiring.adapter_id
+              );
+              if (adapterFound) {
+                return true;
+              }
+              this.notificationService.error(
+                `Adapter Id ${wiring.adapter_id} not found`
+              );
+              // Reset the wiring to 'manual input'.
+              wiring.adapter_id = AdapterHttpService.MANUAL_INPUT_ADAPTER_ID;
+              wiring.filters = {};
+              delete wiring.ref_id;
+              delete wiring.ref_id_type;
+              delete wiring.type;
+              return false;
+            })
             .map(wiring => {
               const adapterOfInputWiring = availableAdapters.find(
                 availableAdapter => availableAdapter.id === wiring.adapter_id
@@ -705,6 +731,11 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
         this._getControlOrFail(formGroup, 'nodePath').reset();
         this._getControlOrFail(formGroup, 'displayName').reset();
         this._getControlOrFail(formGroup, 'metaDataKey').reset();
+        // Type and ref id type belong to the previously selected node. If they
+        // were kept, switching from a metadata sink to "Drop Result" would send
+        // a stale "metadata(any)" type without ref key along.
+        this._getControlOrFail(formGroup, 'nodeType').reset();
+        this._getControlOrFail(formGroup, 'refIdType').reset();
         this._getControlOrFail(formGroup, 'timestampRangeQuery').reset();
         this._getControlOrFail(formGroup, 'timestampRangePickerHidden').reset(
           false
@@ -1101,10 +1132,6 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
 
       return validationErrorOrNull;
     };
-  }
-
-  public getTypeColor(type: string): string {
-    return `var(--${type}-color)`;
   }
 
   public _isTimestampRangeType(type: IOType): boolean {
