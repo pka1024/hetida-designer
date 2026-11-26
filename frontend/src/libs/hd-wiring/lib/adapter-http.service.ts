@@ -45,7 +45,7 @@ export interface OutputWiring {
 
 export interface TestWiring {
   input_wirings: InputWiring[];
-  output_wirings: OutputWiring[]
+  output_wirings: OutputWiring[];
 }
 
 export type InputOrOutputWiring = InputWiring | OutputWiring;
