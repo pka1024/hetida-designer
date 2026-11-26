@@ -23,6 +23,7 @@ export type InputFilters = WiringDateRangeFilter & FreeTextFilters;
 export interface InputWiring {
   workflow_input_name: string;
   adapter_id: string;
+  uri?: string;
   ref_id?: string;
   ref_id_type?: NodeSourceType;
   ref_key?: string;
@@ -34,6 +35,7 @@ export interface InputWiring {
 export interface OutputWiring {
   workflow_output_name: string;
   adapter_id: string;
+  uri?: string;
   ref_id?: string;
   ref_id_type?: NodeSourceType;
   ref_key?: string;
@@ -41,9 +43,21 @@ export interface OutputWiring {
   filters?: InputFilters | null | undefined;
 }
 
+export interface UriInputWiring {
+  adapter_id: string;
+  uri: string;
+  workflow_input_name: string;
+}
+
+export interface UriOutputWiring {
+  adapter_id: string;
+  uri: string;
+  workflow_output_name: string;
+}
+
 export interface TestWiring {
-  input_wirings: InputWiring[];
-  output_wirings: OutputWiring[];
+  input_wirings: InputWiring[] | UriInputWiring[];
+  output_wirings: OutputWiring[] | UriOutputWiring[];
 }
 
 export type InputOrOutputWiring = InputWiring | OutputWiring;
@@ -178,9 +192,9 @@ export class AdapterHttpService {
     name: 'manual input'
   };
 
-  static readonly SPECIFY_URI_ADAPTER_ID: string = 'specify_uri';
-  static readonly SPECIFY_URI_ADAPTER: Adapter = {
-    id: AdapterHttpService.SPECIFY_URI_ADAPTER_ID,
+  static readonly URI_ADAPTER_ID: string = 'uri';
+  static readonly URI_ADAPTER: Adapter = {
+    id: AdapterHttpService.URI_ADAPTER_ID,
     internalUrl: '',
     name: 'Specify URI',
     url: ''

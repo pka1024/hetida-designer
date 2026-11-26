@@ -36,7 +36,9 @@ import {
   OutputWiring,
   SourceSinkNode,
   TestWiring,
-  ThingNode
+  ThingNode,
+  UriInputWiring,
+  UriOutputWiring
 } from '../adapter-http.service';
 import { ConfigService } from '../config.service';
 import { JsonEditorComponent, JsonEditorModalData } from '../json-editor';
@@ -243,7 +245,7 @@ export class WiringDialogComponent implements OnInit {
     // A form still being built from a previous wiring must not replace this one.
     this._loadWiringSubscription?.unsubscribe();
     this._loadWiringSubscription = of([
-      AdapterHttpService.SPECIFY_URI_ADAPTER,
+      AdapterHttpService.URI_ADAPTER,
       ...this.adapterList
     ])
       .pipe(
@@ -265,8 +267,7 @@ export class WiringDialogComponent implements OnInit {
               wiring =>
                 wiring.adapter_id !==
                   AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
-                wiring.adapter_id !==
-                  AdapterHttpService.SPECIFY_URI_ADAPTER_ID &&
+                wiring.adapter_id !== AdapterHttpService.URI_ADAPTER_ID &&
                 wiring.adapter_id !== 'drop' &&
                 wiring.adapter_id !== 'plot'
             )
@@ -431,7 +432,7 @@ export class WiringDialogComponent implements OnInit {
     // Runs for every input or output ones.
     let nodeId: string | null = null;
     let manualValue: string | null = null;
-    const uriValue: string | null = null;
+    let uriValue: string | null = null;
     let timestampFrom: Moment | null = null;
     let timestampTo: Moment | null = null;
     let timestampRangeQuery: string | null = null;
@@ -446,21 +447,22 @@ export class WiringDialogComponent implements OnInit {
         ? AdapterHttpService.MANUAL_INPUT_ADAPTER_ID
         : null;
     let useDefaultValue: boolean = ioItem.type === IOTypeOption.OPTIONAL;
+
     if (inputOrOutputWiring) {
       nodeId = inputOrOutputWiring.ref_id ?? null;
       adapterId = inputOrOutputWiring.adapter_id ?? null;
+      uriValue = inputOrOutputWiring.uri ?? null;
 
       // Save adapterId for input and output to reset textFilters on adapterId change.
       if (sourceType === 'INPUT_WIRING') {
-        this._saveAdapterIdInput = adapterId;
+        this._saveAdapterIdInput = adapterId ?? null;
       } else {
-        this._saveAdapterIdOutput = adapterId;
+        this._saveAdapterIdOutput = adapterId ?? null;
       }
       if (
         inputOrOutputWiring.adapter_id !==
           AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
-        inputOrOutputWiring.adapter_id !==
-          AdapterHttpService.SPECIFY_URI_ADAPTER_ID
+        inputOrOutputWiring.adapter_id !== AdapterHttpService.URI_ADAPTER_ID
       ) {
         // prettier-ignore
         nodeName = Utils.isDefined(nodeId)
@@ -639,15 +641,25 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
   ): void {
     if (
       Utils.isNullOrUndefined(adapterId) ||
+      adapterId === AdapterHttpService.URI_ADAPTER_ID ||
       adapterId === 'drop' ||
       adapterId === 'plot'
     ) {
       this._getControlOrFail(formGroup, 'displayName').disable();
     }
-
     this._getControlOrFail(formGroup, 'displayName').setValidators(
       this._nodeIdValidation(formGroup)
     );
+
+    if (adapterId !== AdapterHttpService.URI_ADAPTER_ID) {
+      this._getControlOrFail(formGroup, 'uriValue').disable();
+    } else {
+      this._getControlOrFail(formGroup, 'rawValue').disable();
+    }
+    this._getControlOrFail(formGroup, 'uriValue').setValidators(
+      this._uriValidation(formGroup)
+    );
+
     if (sourceType === 'INPUT_WIRING') {
       this._getControlOrFail(formGroup, 'rawValue').setValidators(
         this._inputTypeCheckIfAny(ioItem.type, ioItem.data_type, formGroup)
@@ -687,6 +699,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
 
     this._getControlOrFail(formGroup, 'adapterId').valueChanges.subscribe(
       changedAdapterId => {
+        this._getControlOrFail(formGroup, 'uriValue').reset();
         this._getControlOrFail(formGroup, 'nodeId').reset();
         this._getControlOrFail(formGroup, 'nodeName').reset();
         this._getControlOrFail(formGroup, 'nodePath').reset();
@@ -764,7 +777,11 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
             null,
             null
           ]);
-        } else if (changedAdapterId === 'drop' || changedAdapterId === 'plot') {
+        } else if (
+          changedAdapterId === 'drop' ||
+          changedAdapterId === 'plot' ||
+          changedAdapterId === AdapterHttpService.URI_ADAPTER_ID
+        ) {
           this._getControlOrFail(formGroup, 'rawValue').reset();
           this._getControlOrFail(formGroup, 'timestampRange').reset([
             null,
@@ -780,12 +797,21 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
 
         if (
           Utils.isNullOrUndefined(changedAdapterId) ||
+          changedAdapterId === AdapterHttpService.URI_ADAPTER_ID ||
           changedAdapterId === 'drop' ||
           changedAdapterId === 'plot'
         ) {
           this._getControlOrFail(formGroup, 'displayName').disable();
         } else {
           this._getControlOrFail(formGroup, 'displayName').enable();
+        }
+
+        if (changedAdapterId === AdapterHttpService.URI_ADAPTER_ID) {
+          this._getControlOrFail(formGroup, 'uriValue').enable();
+          this._getControlOrFail(formGroup, 'rawValue').disable();
+        } else {
+          this._getControlOrFail(formGroup, 'uriValue').disable();
+          this._getControlOrFail(formGroup, 'rawValue').enable();
         }
       }
     );
@@ -911,6 +937,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
         return validationErrorOrNull;
       }
 
+      // TODO: I think it's already checked in "if (!this._parameterHasAdapter(fromGroup))", validate when time.
       const adapterId = fromGroup.get('adapterId')?.value;
       if (adapterId === 'drop' || adapterId === 'plot') {
         return null;
@@ -1042,6 +1069,34 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
 
       if (!isControlValueOptionalAndNull) {
         validationErrorOrNull = this._ioItemTypeValidation(ioItemType, control);
+      }
+
+      return validationErrorOrNull;
+    };
+  }
+
+  private _uriValidation(fromGroup: FormGroup): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      let validationErrorOrNull: ValidationErrors | null = null;
+      const controlValue = control.value as string | null | undefined;
+
+      const adapterId = fromGroup.get('adapterId')?.value;
+      if (adapterId !== AdapterHttpService.URI_ADAPTER_ID) {
+        return null;
+      }
+
+      // Check if controlValue is null or undefined or a empty string.
+      if (
+        Utils.isNullOrUndefined(controlValue) ||
+        Utils.string.isEmpty(controlValue)
+      ) {
+        validationErrorOrNull = {
+          invalidUri: {
+            value: control.value
+          },
+          message: 'please enter a URI'
+        };
+        return validationErrorOrNull;
       }
 
       return validationErrorOrNull;
@@ -1396,9 +1451,9 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
         this._getControlOrFail(inputControl, 'timestampRangeQuery').reset();
       }
     });
-
     this.inputFormArray.markAllAsTouched();
     this.outputFormArray.markAllAsTouched();
+
     if (this.inputFormArray.invalid || this.outputFormArray.invalid) {
       return;
     }
@@ -1408,121 +1463,140 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
       output_wirings: []
     };
 
-    const inputWirings: InputWiring[] = this.inputFormArray.controls.map(
-      // eslint-disable-next-line complexity
-      (inputControl: AbstractControl) => {
-        Utils.assert(
-          inputControl instanceof FormGroup,
-          'Form schema is flawed, formGroup after formArray not found.'
-        );
-        const uiWiring: UiItemWiring = inputControl.getRawValue() ?? null;
-        let filters: InputFilters = {};
+    const inputWirings: InputWiring[] | UriInputWiring[] =
+      this.inputFormArray.controls.map(
+        // eslint-disable-next-line complexity
+        (inputControl: AbstractControl) => {
+          Utils.assert(
+            inputControl instanceof FormGroup,
+            'Form schema is flawed, formGroup after formArray not found.'
+          );
+          const uiWiring: UiItemWiring = inputControl.getRawValue() ?? null;
+          let filters: InputFilters = {};
 
-        if (Utils.isDefined(uiWiring.rawValue)) {
-          filters.value = uiWiring.rawValue;
-        }
-        // Apply timestamp only for series and for non manual selection.
-        if (
-          (uiWiring.ioType === IOType.SERIES ||
-            uiWiring.ioType === IOType.MULTITSFRAME) &&
-          Utils.isNullOrUndefined(uiWiring.rawValue)
-        ) {
-          const timestampRange = uiWiring.timestampRange;
-          const timestampRangeQuery = uiWiring.timestampRangeQuery;
-          const timestampRangePickerHidden =
-            uiWiring.timestampRangePickerHidden;
+          if (Utils.isDefined(uiWiring.rawValue)) {
+            filters.value = uiWiring.rawValue;
+          }
+          // Apply timestamp only for series and for non manual selection.
+          if (
+            (uiWiring.ioType === IOType.SERIES ||
+              uiWiring.ioType === IOType.MULTITSFRAME) &&
+            Utils.isNullOrUndefined(uiWiring.rawValue)
+          ) {
+            const timestampRange = uiWiring.timestampRange;
+            const timestampRangeQuery = uiWiring.timestampRangeQuery;
+            const timestampRangePickerHidden =
+              uiWiring.timestampRangePickerHidden;
 
-          if (timestampRangePickerHidden) {
-            Utils.assert(
-              timestampRangeQuery,
-              'For series and non manual selection time range selection are required'
-            );
-            filters = {
-              timestampFrom:
-                this._splitTimestampRangeQuery(timestampRangeQuery)[0] ??
-                undefined,
-              timestampTo:
-                this._splitTimestampRangeQuery(timestampRangeQuery)[1] ??
-                undefined
-            };
-          } else {
-            Utils.assert(
-              timestampRange,
-              'For series and non manual selection time range selection are required'
-            );
-            filters = {
-              timestampFrom:
-                this.dateFormatter.transform(
-                  timestampRange[0]?.valueOf(),
-                  // eslint-disable-next-line @stylistic/quotes
-                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
-                  '+0000'
-                ) ?? undefined,
-              timestampTo:
-                this.dateFormatter.transform(
-                  timestampRange[1]?.valueOf(),
-                  // eslint-disable-next-line @stylistic/quotes
-                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
-                  '+0000'
-                ) ?? undefined
+            if (timestampRangePickerHidden) {
+              Utils.assert(
+                timestampRangeQuery,
+                'For series and non manual selection time range selection are required'
+              );
+              filters = {
+                timestampFrom:
+                  this._splitTimestampRangeQuery(timestampRangeQuery)[0] ??
+                  undefined,
+                timestampTo:
+                  this._splitTimestampRangeQuery(timestampRangeQuery)[1] ??
+                  undefined
+              };
+            } else {
+              Utils.assert(
+                timestampRange,
+                'For series and non manual selection time range selection are required'
+              );
+              filters = {
+                timestampFrom:
+                  this.dateFormatter.transform(
+                    timestampRange[0]?.valueOf(),
+                    // eslint-disable-next-line @stylistic/quotes
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
+                    '+0000'
+                  ) ?? undefined,
+                timestampTo:
+                  this.dateFormatter.transform(
+                    timestampRange[1]?.valueOf(),
+                    // eslint-disable-next-line @stylistic/quotes
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'",
+                    '+0000'
+                  ) ?? undefined
+              };
+            }
+          }
+
+          const textFilters = uiWiring.textFilters as Array<any>;
+
+          for (const textFilter of textFilters) {
+            const filterKey = textFilter.filterKey;
+            const filterValue = textFilter[`value_${filterKey}`];
+            filters[filterKey] = filterValue ?? '';
+          }
+
+          if (Utils.isDefined(uiWiring.uriValue)) {
+            return {
+              adapter_id: uiWiring.adapterId,
+              uri: uiWiring.uriValue,
+              workflow_input_name: uiWiring.ioItemName
             };
           }
+
+          return {
+            workflow_input_name: uiWiring.ioItemName,
+            adapter_id: uiWiring.adapterId,
+            ref_id: uiWiring.nodeId ?? undefined,
+            ref_id_type: uiWiring.refIdType ?? undefined,
+            ref_key: uiWiring.metaDataKey ?? undefined,
+            type: uiWiring.nodeType ?? undefined,
+            filters: filters ?? undefined,
+            use_default_value: uiWiring.useDefaultValue ?? false
+          };
         }
+      );
 
-        const textFilters = uiWiring.textFilters as Array<any>;
+    const outputWirings: OutputWiring[] | UriOutputWiring[] =
+      this.outputFormArray.controls
+        .filter(control => {
+          Utils.assert(
+            control instanceof FormGroup,
+            'Form schema is flawed, formGroup after formArray not found'
+          );
+          const rawValue: UiItemWiring = control.getRawValue();
+          return Utils.isDefined(rawValue.adapterId);
+        })
+        .map(control => {
+          Utils.assert(
+            control instanceof FormGroup,
+            'Form schema is flawed, formGroup after formArray not found'
+          );
+          const uiWiring: UiItemWiring = control.getRawValue();
+          const textFilters = uiWiring.textFilters as Array<any>;
+          const filters: InputFilters = {};
 
-        for (const textFilter of textFilters) {
-          const filterKey = textFilter.filterKey;
-          const filterValue = textFilter[`value_${filterKey}`];
-          filters[filterKey] = filterValue ?? '';
-        }
+          for (const textFilter of textFilters) {
+            const filterKey = textFilter.filterKey;
+            const filterValue = textFilter[`value_${filterKey}`];
+            filters[filterKey] = filterValue ?? '';
+          }
 
-        return {
-          workflow_input_name: uiWiring.ioItemName,
-          adapter_id: uiWiring.adapterId,
-          ref_id: uiWiring.nodeId ?? undefined,
-          ref_id_type: uiWiring.refIdType ?? undefined,
-          ref_key: uiWiring.metaDataKey ?? undefined,
-          type: uiWiring.nodeType ?? undefined,
-          filters: filters ?? undefined,
-          use_default_value: uiWiring.useDefaultValue ?? false
-        };
-      }
-    );
+          if (Utils.isDefined(uiWiring.uriValue)) {
+            return {
+              adapter_id: uiWiring.adapterId,
+              uri: uiWiring.uriValue,
+              workflow_output_name: uiWiring.ioItemName
+            };
+          }
 
-    const outputWirings: OutputWiring[] = this.outputFormArray.controls
-      .filter(control => {
-        Utils.assert(
-          control instanceof FormGroup,
-          'Form schema is flawed, formGroup after formArray not found'
-        );
-        const rawValue: UiItemWiring = control.getRawValue();
-        return Utils.isDefined(rawValue.adapterId);
-      })
-      .map(control => {
-        Utils.assert(
-          control instanceof FormGroup,
-          'Form schema is flawed, formGroup after formArray not found'
-        );
-        const uiWiring: UiItemWiring = control.getRawValue();
-        const textFilters = uiWiring.textFilters as Array<any>;
-        const filters: InputFilters = {};
-
-        for (const textFilter of textFilters) {
-          const filterKey = textFilter.filterKey;
-          const filterValue = textFilter[`value_${filterKey}`];
-          filters[filterKey] = filterValue ?? '';
-        }
-        return {
-          workflow_output_name: uiWiring.ioItemName,
-          adapter_id: uiWiring.adapterId,
-          ref_id: uiWiring.nodeId ?? undefined,
-          ref_id_type: uiWiring.refIdType ?? undefined,
-          ref_key: uiWiring.metaDataKey ?? undefined,
-          type: uiWiring.nodeType ?? undefined,
-          filters: filters ?? undefined
-        };
-      });
+          return {
+            workflow_output_name: uiWiring.ioItemName,
+            adapter_id: uiWiring.adapterId,
+            ref_id: uiWiring.nodeId ?? undefined,
+            ref_id_type: uiWiring.refIdType ?? undefined,
+            ref_key: uiWiring.metaDataKey ?? undefined,
+            type: uiWiring.nodeType ?? undefined,
+            filters: filters ?? undefined
+          };
+        });
 
     reassembledWorkflowWiring.input_wirings = inputWirings;
     reassembledWorkflowWiring.output_wirings = outputWirings;
@@ -1799,7 +1873,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
     }
     return (
       adapterId.value !== AdapterHttpService.MANUAL_INPUT_ADAPTER_ID &&
-      adapterId.value !== AdapterHttpService.SPECIFY_URI_ADAPTER_ID &&
+      adapterId.value !== AdapterHttpService.URI_ADAPTER_ID &&
       adapterId.value !== 'drop' &&
       adapterId.value !== 'plot'
     );
@@ -1901,6 +1975,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
     this._getControlOrFail(inputControl, 'refIdType').reset(null);
     this._getControlOrFail(inputControl, 'rawValue').reset(null);
     this._getControlOrFail(inputControl, 'metaDataKey').reset(null);
+    this._getControlOrFail(inputControl, 'uriValue').reset();
     this._getControlOrFail(inputControl, 'nodeId').reset(null);
     this._getControlOrFail(inputControl, 'nodeName').reset(null);
     this._getControlOrFail(inputControl, 'nodePath').reset(null);
@@ -1917,6 +1992,7 @@ ${this._timestampRangeQueryDelimiter}${tmpInputWiring.filters.timestampTo}`;
   public _clearOutput(outputControl: AbstractControl): void {
     this._getControlOrFail(outputControl, 'refIdType').reset(null);
     this._getControlOrFail(outputControl, 'metaDataKey').reset(null);
+    this._getControlOrFail(outputControl, 'uriValue').reset();
     this._getControlOrFail(outputControl, 'nodeId').reset(null);
     this._getControlOrFail(outputControl, 'nodeName').reset(null);
     this._getControlOrFail(outputControl, 'nodePath').reset(null);

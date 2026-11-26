@@ -217,21 +217,23 @@
                     }}</mat-error>
                   </mat-form-field>
                 } @else if (
-                  _getControlOrFail(inputControl, 'adapterId').value ===
-                  'specify_uri'
+                  _getControlOrFail(inputControl, 'adapterId').value === 'uri'
                 ) {
                   <mat-form-field
                     class="mat-form-field--no-fixed-width parameter-input__value-column"
                   >
-                    <mat-label>URI Value</mat-label>
+                    <mat-label>URI</mat-label>
                     <input
+                      [title]="
+                        _getControlOrFail(inputControl, 'uriValue').value
+                      "
                       formControlName="uriValue"
                       matInput
-                      placeholder="URI Value"
+                      placeholder="URI"
                       type="text"
                       attr.data-testid="{{
-                        _getControlOrFail(inputControl, 'ioItemName').value +
-                          '-uri-value-wiring-dialog' | lowercase
+                        _getControlOrFail(inputControl, 'uriValue').value +
+                          '-uri-input-wiring-dialog' | lowercase
                       }}"
                     />
                     <mat-error>{{
@@ -542,20 +544,23 @@
                   </mat-form-field>
                   @if (
                     _getControlOrFail(outputControl, 'adapterId').value ===
-                    'specify_uri'
+                    'uri'
                   ) {
                     <mat-form-field
                       class="mat-form-field--no-fixed-width parameter-output__value-column"
                     >
-                      <mat-label>URI Value</mat-label>
+                      <mat-label>URI</mat-label>
                       <input
+                        [title]="
+                          _getControlOrFail(outputControl, 'uriValue').value
+                        "
                         formControlName="uriValue"
                         matInput
-                        placeholder="URI Value"
+                        placeholder="URI"
                         type="text"
                         attr.data-testid="{{
-                          _getControlOrFail(outputControl, 'ioItemName').value +
-                            '-uri-value-wiring-dialog' | lowercase
+                          _getControlOrFail(outputControl, 'uriValue').value +
+                            '-uri-output-wiring-dialog' | lowercase
                         }}"
                       />
                       <mat-error>{{
